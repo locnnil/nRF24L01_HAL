@@ -1,8 +1,8 @@
 # eclipse specific git ignore
-.metadata/
+**/.metadata/
 RemoteSystemsTempFiles/
-.settings/
-Debug/
+**/.settings/
+**/Debug/
 *.launch
 
 # STM32 git ignore
