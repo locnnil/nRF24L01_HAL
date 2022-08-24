@@ -1,29 +1,31 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2022 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2022 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "spi.h"
+#include "tim.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "tm_stm32_nrf24l01.h"
+#include "defines.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +45,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+/* My address */
+uint8_t MyAddress[] = { 0xE7, 0xE7, 0xE7, 0xE7, 0xE7 };
+/* Receiver address */
+uint8_t TxAddress[] = { 0x7E, 0x7E, 0x7E, 0x7E, 0x7E };
 
 /* USER CODE END PV */
 
@@ -54,7 +60,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint8_t timer_triggered=0;
 /* USER CODE END 0 */
 
 /**
@@ -64,6 +70,8 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	TM_NRF24L01_Transmit_Status_t transmissionStatus;
+	char str[40];
 
   /* USER CODE END 1 */
 
@@ -86,18 +94,36 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_TIM10_Init();
   /* USER CODE BEGIN 2 */
 
+	/* Initialize NRF24L01+ on channel 15 and 32bytes of payload */
+	/* By default 2Mbps data rate and 0dBm output power */
+	/* NRF24L01 goes to RX mode by default */
+	TM_NRF24L01_Init(15, 32);
+
+	/* Set 2MBps data rate and -18dBm output power */
+	TM_NRF24L01_SetRF(TM_NRF24L01_DataRate_2M, TM_NRF24L01_OutputPower_M18dBm);
+
+	/* Set my address, 5 bytes */
+	TM_NRF24L01_SetMyAddress(MyAddress);
+	/* Set TX address, 5 bytes */
+	TM_NRF24L01_SetTxAddress(TxAddress);
+
+	HAL_TIM_Base_Start_IT(&htim10);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
+		if(timer_triggered >= 20){
+			timer_triggered=0;
+
+		}
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -143,6 +169,15 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim)
+{
+	if(htim == &htim10){
+		timer_triggered++;
+	}else{
+		DEBUGBKPT();
+	}
+}
+
 /* USER CODE END 4 */
 
 /**
@@ -152,11 +187,10 @@ void SystemClock_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
