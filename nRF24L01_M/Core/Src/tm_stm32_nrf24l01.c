@@ -232,7 +232,6 @@ static TM_NRF24L01_t TM_NRF24L01_Struct;
 
 uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t* data){
 	uint8_t tmp=0;
-	HAL_StatusTypeDef spireturn=HAL_ERROR;
 	if(HAL_SPI_TransmitReceive(hspi, data, (uint8_t *)tmp, STD_SIZE, STD_TIMEOUT)!=HAL_OK){
 			DEBUGBKPT();
 	}
