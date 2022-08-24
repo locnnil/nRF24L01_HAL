@@ -30,6 +30,8 @@
 #include "Legacy/stm32_hal_legacy.h"
 #include <stddef.h>
 
+#include "defines.h"
+
 /* Exported types ------------------------------------------------------------*/
 
 /** 
