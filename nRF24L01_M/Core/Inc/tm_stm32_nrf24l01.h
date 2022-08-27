@@ -124,6 +124,7 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
 
 #include "main.h"
 #include "spi.h"
+#include "defines.h"
 //#include "stm32fxxx_hal.h"
 //#include "defines.h"
 //#include "tm_stm32_spi.h"

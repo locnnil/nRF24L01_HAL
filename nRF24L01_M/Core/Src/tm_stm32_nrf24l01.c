@@ -222,7 +222,7 @@ void TM_NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t* data, uint8_t count);
 void TM_NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count);
 void TM_NRF24L01_SoftwareReset(void);
 uint8_t TM_NRF24L01_RxFifoEmpty(void);
-uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t* data); // TODO: Implementation of HAL SPI inside this function
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data); // TODO: Implementation of HAL SPI inside this function
 void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count);
 void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count);
 
@@ -230,25 +230,32 @@ void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uin
 static TM_NRF24L01_t TM_NRF24L01_Struct;
 
 
-uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t* data){
+
+/* Adaptation to use STM32 HAL SPI*/
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data){
 	uint8_t tmp=0;
-	if(HAL_SPI_TransmitReceive(hspi, data, (uint8_t *)tmp, STD_SIZE, STD_TIMEOUT)!=HAL_OK){
+	HAL_StatusTypeDef sta;
+	sta = HAL_SPI_TransmitReceive(hspi, data, (uint8_t*)tmp, STD_SIZE, STD_TIMEOUT);
+	if(sta!=HAL_OK){
 			DEBUGBKPT();
 	}
 	return tmp;
 }
 
-void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count){
-	uint8_t tmp[MAX_PAYLOAD];
-	if(HAL_SPI_TransmitReceive(hspi, data, (uint8_t *)tmp, MAX_PAYLOAD, STD_TIMEOUT)!=HAL_OK){
+void TM_SPI_SendMulti(SPI_HandleTypeDef *hspi,uint8_t* dataOut, uint8_t* dataIn, uint8_t count){
+	if(HAL_SPI_TransmitReceive(hspi, dataOut, dataIn, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
+
+void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count){;
+	if(HAL_SPI_Transmit(hspi, data, count, STD_TIMEOUT)!=HAL_OK){
 			DEBUGBKPT();
 	}
 }
 
 void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count){
-	UNUSED(mask);
-	uint8_t tmp[MAX_PAYLOAD];
-	if(HAL_SPI_TransmitReceive(hspi, data, (uint8_t *)tmp, MAX_PAYLOAD, STD_TIMEOUT)!=HAL_OK){
+	if(HAL_SPI_TransmitReceive(hspi, data, mask, count, STD_TIMEOUT)!=HAL_OK){
 			DEBUGBKPT();
 	}
 }
@@ -450,7 +457,7 @@ void TM_NRF24L01_GetData(uint8_t* data) {
 	/* Send read payload command*/
 	TM_SPI_Send(NRF24L01_SPI, NRF24L01_R_RX_PAYLOAD_MASK);
 	/* Read payload */
-	TM_SPI_SendMulti(NRF24L01_SPI, data, data, TM_NRF24L01_Struct.PayloadSize);
+	TM_SPI_SendMulti(NRF24L01_SPI, data, data, TM_NRF24L01_Struct.PayloadSize); //TODO: Fix this
 	/* Pull up chip select */
 	NRF24L01_CSN_HIGH;
 	
