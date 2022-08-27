@@ -41,6 +41,8 @@ extern TIM_HandleTypeDef htim10;
 void MX_TIM10_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+uint32_t DELAY_Time();
+void DELAY_SetTime(uint32_t num);
 
 /* USER CODE END Prototypes */
 

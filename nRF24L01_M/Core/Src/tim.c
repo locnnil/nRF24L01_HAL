@@ -25,6 +25,8 @@
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim10;
+uint32_t tick=0;
+uint32_t _tick=0;
 
 /* TIM10 init function */
 void MX_TIM10_Init(void)
@@ -93,5 +95,12 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 }
 
 /* USER CODE BEGIN 1 */
+uint32_t DELAY_Time(){
+	tick = (uint32_t)(HAL_GetTick() - _tick);
+	return tick;
+}
+void DELAY_SetTime(uint32_t num){
+	_tick = HAL_GetTick() + num;
+}
 
 /* USER CODE END 1 */
