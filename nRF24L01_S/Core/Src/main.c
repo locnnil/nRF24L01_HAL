@@ -130,6 +130,7 @@ int main(void) {
 			/* Go back to RX Mode */
 			TM_NRF24L01_PowerUpRx();
 		}
+		asm ("nop");
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
