@@ -1,33 +1,40 @@
 /**	
  * |----------------------------------------------------------------------
- * | Copyright (C) Tilen Majerle, 2014
- * | 
- * | This program is free software: you can redistribute it and/or modify
- * | it under the terms of the GNU General Public License as published by
- * | the Free Software Foundation, either version 3 of the License, or
- * | any later version.
+ * | Copyright (c) 2016 Tilen Majerle
  * |  
- * | This program is distributed in the hope that it will be useful,
- * | but WITHOUT ANY WARRANTY; without even the implied warranty of
- * | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * | GNU General Public License for more details.
+ * | Permission is hereby granted, free of charge, to any person
+ * | obtaining a copy of this software and associated documentation
+ * | files (the "Software"), to deal in the Software without restriction,
+ * | including without limitation the rights to use, copy, modify, merge,
+ * | publish, distribute, sublicense, and/or sell copies of the Software, 
+ * | and to permit persons to whom the Software is furnished to do so, 
+ * | subject to the following conditions:
  * | 
- * | You should have received a copy of the GNU General Public License
- * | along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * | The above copyright notice and this permission notice shall be
+ * | included in all copies or substantial portions of the Software.
+ * | 
+ * | THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * | EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+ * | OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE
+ * | AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ * | HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+ * | WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * | FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * | OTHER DEALINGS IN THE SOFTWARE.
  * |----------------------------------------------------------------------
  */
-#include "tm_stm32f4_nrf24l01.h"
+#include "tm_stm32_nrf24l01.h"
 
 /* NRF24L01+ registers*/
 #define NRF24L01_REG_CONFIG			0x00	//Configuration Register
-#define NRF24L01_REG_EN_AA			0x01	//Enable ‘Auto Acknowledgment’ Function
+#define NRF24L01_REG_EN_AA			0x01	//Enable ï¿½Auto Acknowledgmentï¿½ Function
 #define NRF24L01_REG_EN_RXADDR		0x02	//Enabled RX Addresses
 #define NRF24L01_REG_SETUP_AW		0x03	//Setup of Address Widths (common for all data pipes)
 #define NRF24L01_REG_SETUP_RETR		0x04	//Setup of Automatic Retransmission
 #define NRF24L01_REG_RF_CH			0x05	//RF Channel
 #define NRF24L01_REG_RF_SETUP		0x06	//RF Setup Register	
 #define NRF24L01_REG_STATUS			0x07	//Status Register
-#define NRF24L01_REG_OBSERVE_TX		0x08	//Transmit observe register
+#define NRF24L01_REG_OBSERVE_TX		0x08	//Transmit observe registerf
 #define NRF24L01_REG_RPD			0x09	
 #define NRF24L01_REG_RX_ADDR_P0		0x0A	//Receive address data pipe 0. 5 Bytes maximum length.
 #define NRF24L01_REG_RX_ADDR_P1		0x0B	//Receive address data pipe 1. 5 Bytes maximum length.
@@ -178,7 +185,18 @@
 #define NRF24L01_ACTIVATE_MASK				0x50 
 #define NRF24L01_R_RX_PL_WID_MASK			0x60
 #define NRF24L01_NOP_MASK					0xFF
+#define NOP_MASK							NRF24L01_NOP_MASK
+uint8_t nop_buff[MAX_PAYLOAD]={
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
+		NOP_MASK,NOP_MASK
+};
 
+//
 /* Flush FIFOs */
 #define NRF24L01_FLUSH_TX					do { NRF24L01_CSN_LOW; TM_SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_TX_MASK); NRF24L01_CSN_HIGH; } while (0)
 #define NRF24L01_FLUSH_RX					do { NRF24L01_CSN_LOW; TM_SPI_Send(NRF24L01_SPI, NRF24L01_FLUSH_RX_MASK); NRF24L01_CSN_HIGH; } while (0)
@@ -195,6 +213,8 @@ typedef struct {
 	TM_NRF24L01_DataRate_t DataRate;	//Data rate
 } TM_NRF24L01_t;
 
+uint8_t tempvar=0;
+
 /* Private functions */
 void TM_NRF24L01_InitPins(void);
 void TM_NRF24L01_WriteBit(uint8_t reg, uint8_t bit, uint8_t value);
@@ -204,17 +224,55 @@ void TM_NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t* data, uint8_t count);
 void TM_NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count);
 void TM_NRF24L01_SoftwareReset(void);
 uint8_t TM_NRF24L01_RxFifoEmpty(void);
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data); // TODO: Implementation of HAL SPI inside this function
+void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count);
+void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count);
 
 /* NRF structure */
 static TM_NRF24L01_t TM_NRF24L01_Struct;
 
+
+
+/* Adaptation to use STM32 HAL SPI*/
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data){
+	//UNUSED(hspi);
+	HAL_StatusTypeDef sta;
+	uint8_t retorno=0;
+	sta = HAL_SPI_TransmitReceive(hspi, (uint8_t *)data, (uint8_t *)tempvar, (uint16_t)STD_SIZE, STD_TIMEOUT);
+	if(sta!=HAL_OK){
+			DEBUGBKPT();
+	}
+	retorno = tempvar;
+	return retorno;
+}
+
+void TM_SPI_SendMulti(SPI_HandleTypeDef *hspi,uint8_t* dataOut, uint8_t* dataIn, uint8_t count){
+	if(HAL_SPI_TransmitReceive(hspi, dataOut, dataIn, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
+
+void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count){;
+	UNUSED(hspi);
+	if(HAL_SPI_Transmit(hspi, data, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
+
+void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count){
+	UNUSED(hspi);
+	if(HAL_SPI_TransmitReceive(hspi, data, mask, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
+
 void TM_NRF24L01_InitPins(void) {
 	/* Init pins */
 	/* CNS pin */
-	TM_GPIO_Init(NRF24L01_CSN_PORT, NRF24L01_CSN_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_UP, TM_GPIO_Speed_Low);
+	//TM_GPIO_Init(NRF24L01_CSN_PORT, NRF24L01_CSN_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_UP, TM_GPIO_Speed_Low);
 	
 	/* CE pin */
-	TM_GPIO_Init(NRF24L01_CE_PORT, NRF24L01_CE_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_UP, TM_GPIO_Speed_Low);
+	//TM_GPIO_Init(NRF24L01_CE_PORT, NRF24L01_CE_PIN, TM_GPIO_Mode_OUT, TM_GPIO_OType_PP, TM_GPIO_PuPd_UP, TM_GPIO_Speed_Low);
 	
 	/* CSN high = disable SPI */
 	NRF24L01_CSN_HIGH;
@@ -228,7 +286,7 @@ uint8_t TM_NRF24L01_Init(uint8_t channel, uint8_t payload_size) {
 	TM_NRF24L01_InitPins();
 	
 	/* Initialize SPI */
-	TM_SPI_Init(NRF24L01_SPI, NRF24L01_SPI_PINS);
+	//TM_SPI_Init(NRF24L01_SPI, NRF24L01_SPI_PINS);
 	
 	/* Max payload is 32bytes */
 	if (payload_size > 32) {
@@ -278,7 +336,7 @@ uint8_t TM_NRF24L01_Init(uint8_t channel, uint8_t payload_size) {
 	NRF24L01_FLUSH_RX;
 	
 	/* Clear interrupts */
-	NRF24L01_CLEAR_INTERRUPTS;
+	TM_NRF24L01_Clear_Interrupts();
 	
 	/* Go to RX mode */
 	TM_NRF24L01_PowerUpRx();
@@ -324,10 +382,9 @@ uint8_t TM_NRF24L01_ReadBit(uint8_t reg, uint8_t bit) {
 uint8_t TM_NRF24L01_ReadRegister(uint8_t reg) {
 	uint8_t value;
 	NRF24L01_CSN_LOW;
-	TM_SPI_Send(NRF24L01_SPI, NRF24L01_READ_REGISTER_MASK(reg));
-	value = TM_SPI_Send(NRF24L01_SPI, NRF24L01_NOP_MASK);
+	TM_SPI_Send(NRF24L01_SPI, (uint8_t *)NRF24L01_READ_REGISTER_MASK(reg));
+	value = TM_SPI_Send(NRF24L01_SPI, (uint8_t *)NRF24L01_NOP_MASK);
 	NRF24L01_CSN_HIGH;
-	
 	return value;
 }
 
@@ -353,7 +410,7 @@ void TM_NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count) {
 }
 
 void TM_NRF24L01_PowerUpTx(void) {
-	NRF24L01_CLEAR_INTERRUPTS;
+	TM_NRF24L01_Clear_Interrupts();
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_CONFIG, NRF24L01_CONFIG | (0 << NRF24L01_PRIM_RX) | (1 << NRF24L01_PWR_UP));
 }
 
@@ -363,7 +420,7 @@ void TM_NRF24L01_PowerUpRx(void) {
 	/* Clear RX buffer */
 	NRF24L01_FLUSH_RX;
 	/* Clear interrupts */
-	NRF24L01_CLEAR_INTERRUPTS;
+	TM_NRF24L01_Clear_Interrupts();
 	/* Setup RX mode */
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_CONFIG, NRF24L01_CONFIG | 1 << NRF24L01_PWR_UP | 1 << NRF24L01_PRIM_RX);
 	/* Start listening */
@@ -372,7 +429,7 @@ void TM_NRF24L01_PowerUpRx(void) {
 
 void TM_NRF24L01_PowerDown(void) {
 	NRF24L01_CE_LOW;
-	TM_NRF24L01_WriteBit(NRF24L01_REG_CONFIG, NRF24L01_PWR_UP, Bit_RESET);
+	TM_NRF24L01_WriteBit(NRF24L01_REG_CONFIG, NRF24L01_PWR_UP, 0);
 }
 
 void TM_NRF24L01_Transmit(uint8_t *data) {
@@ -406,7 +463,7 @@ void TM_NRF24L01_GetData(uint8_t* data) {
 	/* Send read payload command*/
 	TM_SPI_Send(NRF24L01_SPI, NRF24L01_R_RX_PAYLOAD_MASK);
 	/* Read payload */
-	TM_SPI_SendMulti(NRF24L01_SPI, data, data, TM_NRF24L01_Struct.PayloadSize);
+	TM_SPI_SendMulti(NRF24L01_SPI, data, data, TM_NRF24L01_Struct.PayloadSize); //TODO: Fix this
 	/* Pull up chip select */
 	NRF24L01_CSN_HIGH;
 	
@@ -543,5 +600,14 @@ void TM_NRF24L01_SetRF(TM_NRF24L01_DataRate_t DataRate, TM_NRF24L01_OutputPower_
 	}
 	
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_RF_SETUP, tmp);
+}
+
+uint8_t TM_NRF24L01_Read_Interrupts(TM_NRF24L01_IRQ_t* IRQ) {
+	IRQ->Status = TM_NRF24L01_GetStatus();
+	return IRQ->Status;
+}
+
+void TM_NRF24L01_Clear_Interrupts(void) {
+	TM_NRF24L01_WriteRegister(0x07, 0x70);
 }
 
