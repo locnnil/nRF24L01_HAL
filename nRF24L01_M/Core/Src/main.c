@@ -119,7 +119,7 @@ int main(void) {
 		if (timer_triggered >= 20) {
 			timer_triggered = 0;
 			/* Fill data with something */
-			sprintf((char*) dataOut, "abcdefghijklmnoszxABCDEFCBDA");
+			sprintf((uint8_t*) dataOut, "abcdefghijklmnoszxABCDEFCBDA");
 
 			/* Display on USART */
 			//TM_USART_Puts(USART1, "pinging: ");
@@ -127,7 +127,7 @@ int main(void) {
 			/* Reset time, start counting microseconds */
 			DELAY_SetTime(0);
 			/* Transmit data, goes automatically to TX mode */
-			TM_NRF24L01_Transmit(dataOut);
+			TM_NRF24L01_Transmit((uint8_t *)dataOut);
 
 			/* Turn on led to indicate sending */
 			LED_ON();
@@ -151,16 +151,18 @@ int main(void) {
 			//TM_USART_Puts(USART1, str);
 
 			/* Get data from NRF2L01+ */
-			TM_NRF24L01_GetData(dataIn);
+			TM_NRF24L01_GetData((uint8_t *)dataIn);
 
 			/* Check transmit status */
 			if (transmissionStatus == TM_NRF24L01_Transmit_Status_Ok) {
 				/* Transmit went OK */
 				//TM_USART_Puts(USART1, ": OK\n");
+				asm ("nop");
 			} else if (transmissionStatus == TM_NRF24L01_Transmit_Status_Lost) {
 				/* Message was LOST */
 				//TM_USART_Puts(USART1, ": LOST\n");
-				DEBUGBKPT();
+				//DEBUGBKPT();
+				asm ("nop");
 			} else {
 				/* This should never happen */
 				//TM_USART_Puts(USART1, ": SENDING\n");

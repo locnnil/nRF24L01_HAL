@@ -41,7 +41,13 @@ extern SPI_HandleTypeDef hspi1;
 void MX_SPI1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *spiHandle, uint8_t data);
 
+void TM_SPI_SendMulti(SPI_HandleTypeDef *spiHandle,uint8_t* dataOut, uint8_t* dataIn, uint8_t count);
+
+void TM_SPI_WriteMulti(SPI_HandleTypeDef *spiHandle, uint8_t* data, uint8_t count);
+
+void TM_SPI_ReadMulti(SPI_HandleTypeDef *spiHandle, uint8_t* data, uint8_t* mask, uint8_t count);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

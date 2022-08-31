@@ -102,21 +102,23 @@ int main(void) {
 	TM_NRF24L01_SetRF(TM_NRF24L01_DataRate_2M, TM_NRF24L01_OutputPower_M18dBm);
 
 	/* Set my address, 5 bytes */
-	TM_NRF24L01_SetMyAddress(MyAddress);
+	TM_NRF24L01_SetMyAddress((uint8_t*)MyAddress);
 	/* Set TX address, 5 bytes */
-	TM_NRF24L01_SetTxAddress(TxAddress);
+	TM_NRF24L01_SetTxAddress((uint8_t*)TxAddress);
 
+	uint8_t test=0;
 	/* USER CODE END 2 */
 
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 	while (1) {
-		if (TM_NRF24L01_DataReady()) {
+		test = TM_NRF24L01_DataReady();
+		if (test) {
 			/* Get data from NRF24L01+ */
-			TM_NRF24L01_GetData(dataIn);
+			TM_NRF24L01_GetData((uint8_t*)dataIn);
 
 			/* Send it back, automatically goes to TX mode */
-			TM_NRF24L01_Transmit(dataIn);
+			TM_NRF24L01_Transmit((uint8_t*)dataIn);
 
 			/* Start send */
 			LED_ON();

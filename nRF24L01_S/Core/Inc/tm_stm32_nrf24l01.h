@@ -117,11 +117,6 @@ IRQ			Not used	Interrupt pin. Goes low when active. Pin functionality is active,
 #define NRF24L01_CE_PORT			CE1_GPIO_Port
 #define NRF24L01_CE_PIN				CE1_Pin
 
-//Define standards
-#define STD_TIMEOUT 				1000
-#define STD_SIZE					sizeof(uint8_t)
-#define MAX_PAYLOAD					32 //@note   Maximal payload size is 32bytes
-
 #include "main.h"
 #include "spi.h"
 #include "defines.h"

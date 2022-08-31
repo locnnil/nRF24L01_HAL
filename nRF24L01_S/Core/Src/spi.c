@@ -21,6 +21,12 @@
 #include "spi.h"
 
 /* USER CODE BEGIN 0 */
+#include "defines.h"
+
+//Define standards
+#define STD_TIMEOUT 				(uint32_t)1000
+#define STD_SIZE					(uint16_t)sizeof(uint8_t)
+#define MAX_PAYLOAD					(uint16_t)32 //@note   Maximal payload size is 32bytes
 
 /* USER CODE END 0 */
 
@@ -123,5 +129,34 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 }
 
 /* USER CODE BEGIN 1 */
+
+/* Adaptation to use STM32 HAL SPI*/
+uint8_t TM_SPI_Send(SPI_HandleTypeDef *spiHandle, uint8_t data){
+	uint8_t tx[STD_SIZE]={data};
+	uint8_t rx[STD_SIZE];
+	if(HAL_SPI_TransmitReceive(spiHandle, (uint8_t *)tx, (uint8_t *)rx, (uint16_t)STD_SIZE, STD_TIMEOUT)!=HAL_OK){
+		DEBUGBKPT();
+	}
+	return rx[0];
+}
+
+void TM_SPI_SendMulti(SPI_HandleTypeDef *spiHandle,uint8_t* dataOut, uint8_t* dataIn, uint8_t count){
+	if(HAL_SPI_TransmitReceive(spiHandle, dataOut, dataIn, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
+
+void TM_SPI_WriteMulti(SPI_HandleTypeDef *spiHandle, uint8_t* data, uint8_t count){
+	if(HAL_SPI_Transmit(spiHandle, data, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+
+}
+
+void TM_SPI_ReadMulti(SPI_HandleTypeDef *spiHandle, uint8_t* data, uint8_t* mask, uint8_t count){
+	if(HAL_SPI_TransmitReceive(spiHandle, data, mask, count, STD_TIMEOUT)!=HAL_OK){
+			DEBUGBKPT();
+	}
+}
 
 /* USER CODE END 1 */

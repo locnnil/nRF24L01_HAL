@@ -186,15 +186,6 @@
 #define NRF24L01_R_RX_PL_WID_MASK			0x60
 #define NRF24L01_NOP_MASK					0xFF
 #define NOP_MASK							NRF24L01_NOP_MASK
-uint8_t nop_buff[MAX_PAYLOAD]={
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,NOP_MASK,
-		NOP_MASK,NOP_MASK
-};
 
 //
 /* Flush FIFOs */
@@ -213,8 +204,6 @@ typedef struct {
 	TM_NRF24L01_DataRate_t DataRate;	//Data rate
 } TM_NRF24L01_t;
 
-uint8_t tempvar=0;
-
 /* Private functions */
 void TM_NRF24L01_InitPins(void);
 void TM_NRF24L01_WriteBit(uint8_t reg, uint8_t bit, uint8_t value);
@@ -224,47 +213,9 @@ void TM_NRF24L01_ReadRegisterMulti(uint8_t reg, uint8_t* data, uint8_t count);
 void TM_NRF24L01_WriteRegisterMulti(uint8_t reg, uint8_t *data, uint8_t count);
 void TM_NRF24L01_SoftwareReset(void);
 uint8_t TM_NRF24L01_RxFifoEmpty(void);
-uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data); // TODO: Implementation of HAL SPI inside this function
-void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count);
-void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count);
 
 /* NRF structure */
 static TM_NRF24L01_t TM_NRF24L01_Struct;
-
-
-
-/* Adaptation to use STM32 HAL SPI*/
-uint8_t TM_SPI_Send(SPI_HandleTypeDef *hspi, uint8_t data){
-	//UNUSED(hspi);
-	HAL_StatusTypeDef sta;
-	uint8_t retorno=0;
-	sta = HAL_SPI_TransmitReceive(hspi, (uint8_t *)data, (uint8_t *)tempvar, (uint16_t)STD_SIZE, STD_TIMEOUT);
-	if(sta!=HAL_OK){
-			DEBUGBKPT();
-	}
-	retorno = tempvar;
-	return retorno;
-}
-
-void TM_SPI_SendMulti(SPI_HandleTypeDef *hspi,uint8_t* dataOut, uint8_t* dataIn, uint8_t count){
-	if(HAL_SPI_TransmitReceive(hspi, dataOut, dataIn, count, STD_TIMEOUT)!=HAL_OK){
-			DEBUGBKPT();
-	}
-}
-
-void TM_SPI_WriteMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t count){;
-	UNUSED(hspi);
-	if(HAL_SPI_Transmit(hspi, data, count, STD_TIMEOUT)!=HAL_OK){
-			DEBUGBKPT();
-	}
-}
-
-void TM_SPI_ReadMulti(SPI_HandleTypeDef *hspi, uint8_t* data, uint8_t* mask, uint8_t count){
-	UNUSED(hspi);
-	if(HAL_SPI_TransmitReceive(hspi, data, mask, count, STD_TIMEOUT)!=HAL_OK){
-			DEBUGBKPT();
-	}
-}
 
 void TM_NRF24L01_InitPins(void) {
 	/* Init pins */
@@ -382,8 +333,8 @@ uint8_t TM_NRF24L01_ReadBit(uint8_t reg, uint8_t bit) {
 uint8_t TM_NRF24L01_ReadRegister(uint8_t reg) {
 	uint8_t value;
 	NRF24L01_CSN_LOW;
-	TM_SPI_Send(NRF24L01_SPI, (uint8_t *)NRF24L01_READ_REGISTER_MASK(reg));
-	value = TM_SPI_Send(NRF24L01_SPI, (uint8_t *)NRF24L01_NOP_MASK);
+	TM_SPI_Send(NRF24L01_SPI, NRF24L01_READ_REGISTER_MASK(reg));
+	value = TM_SPI_Send(NRF24L01_SPI, NRF24L01_NOP_MASK);
 	NRF24L01_CSN_HIGH;
 	return value;
 }
@@ -458,12 +409,15 @@ void TM_NRF24L01_Transmit(uint8_t *data) {
 }
 
 void TM_NRF24L01_GetData(uint8_t* data) {
+	uint8_t flush_buff[32];
+
 	/* Pull down chip select */
 	NRF24L01_CSN_LOW;
 	/* Send read payload command*/
 	TM_SPI_Send(NRF24L01_SPI, NRF24L01_R_RX_PAYLOAD_MASK);
 	/* Read payload */
-	TM_SPI_SendMulti(NRF24L01_SPI, data, data, TM_NRF24L01_Struct.PayloadSize); //TODO: Fix this
+
+	TM_SPI_SendMulti(NRF24L01_SPI, (uint8_t *)flush_buff, data, TM_NRF24L01_Struct.PayloadSize);
 	/* Pull up chip select */
 	NRF24L01_CSN_HIGH;
 	
@@ -531,7 +485,7 @@ void TM_NRF24L01_SoftwareReset(void) {
 	data[2] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P0_2;
 	data[3] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P0_3;
 	data[4] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P0_4;
-	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P0, data, 5);
+	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P0, (uint8_t*)data, 5);
 	
 	//P1
 	data[0] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P1_0;
@@ -539,7 +493,7 @@ void TM_NRF24L01_SoftwareReset(void) {
 	data[2] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P1_2;
 	data[3] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P1_3;
 	data[4] = NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P1_4;
-	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P1, data, 5);
+	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_RX_ADDR_P1, (uint8_t*)data, 5);
 	
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_RX_ADDR_P2, 	NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P2);
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_RX_ADDR_P3, 	NRF24L01_REG_DEFAULT_VAL_RX_ADDR_P3);
@@ -552,7 +506,7 @@ void TM_NRF24L01_SoftwareReset(void) {
 	data[2] = NRF24L01_REG_DEFAULT_VAL_TX_ADDR_2;
 	data[3] = NRF24L01_REG_DEFAULT_VAL_TX_ADDR_3;
 	data[4] = NRF24L01_REG_DEFAULT_VAL_TX_ADDR_4;
-	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_TX_ADDR, data, 5);
+	TM_NRF24L01_WriteRegisterMulti(NRF24L01_REG_TX_ADDR, (uint8_t*)data, 5);
 	
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_RX_PW_P0, 	NRF24L01_REG_DEFAULT_VAL_RX_PW_P0);
 	TM_NRF24L01_WriteRegister(NRF24L01_REG_RX_PW_P1, 	NRF24L01_REG_DEFAULT_VAL_RX_PW_P1);
